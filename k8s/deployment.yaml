@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ml-risk-service
+  labels:
+    app: ml-risk-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ml-risk-service
+  template:
+    metadata:
+      labels:
+        app: ml-risk-service
+    spec:
+      containers:
+        - name: ml-risk-service
+          image: ghcr.io/example/ml-risk-service:2026.03.15
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: APP_HOST
+              value: "0.0.0.0"
+            - name: APP_PORT
+              value: "8000"
+            - name: APP_ENV
+              value: "prod"
+            - name: MODEL_VERSION
+              value: "2026.03.15"
+            - name: DEFAULT_THRESHOLD
+              value: "0.65"
+            - name: DATABASE_URL
+              value: "postgresql://ml_service:ml_service@postgres:5432/ml_service"
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            failureThreshold: 30
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

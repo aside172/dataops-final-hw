@@ -1,0 +1,80 @@
+services:
+  mlflow-postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5433:5432"
+    volumes:
+      - mlflow-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mlflow-db-migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: "no"
+    env_file:
+      - .env
+    environment:
+      BACKEND_STORE_URI: ${BACKEND_STORE_URI}
+      ARTIFACT_ROOT: ${ARTIFACT_ROOT}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      MLFLOW_PORT: ${MLFLOW_PORT:-5001}
+      MLFLOW_DB_RESET_ON_INCONSISTENT_STATE: ${MLFLOW_DB_RESET_ON_INCONSISTENT_STATE:-false}
+    depends_on:
+      mlflow-postgres:
+        condition: service_healthy
+    command: ["migrate"]
+    volumes:
+      - ../../artifacts/mlflow:/mlartifacts
+      - ../../scripts:/opt/project-scripts:ro
+
+  mlflow:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: on-failure:3
+    env_file:
+      - .env
+    environment:
+      BACKEND_STORE_URI: ${BACKEND_STORE_URI}
+      ARTIFACT_ROOT: ${ARTIFACT_ROOT}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      MLFLOW_PORT: ${MLFLOW_PORT:-5001}
+      MLFLOW_DB_RESET_ON_INCONSISTENT_STATE: ${MLFLOW_DB_RESET_ON_INCONSISTENT_STATE:-false}
+    depends_on:
+      mlflow-postgres:
+        condition: service_healthy
+      mlflow-db-migrate:
+        condition: service_completed_successfully
+    ports:
+      - "5001:5001"
+    volumes:
+      - ../../artifacts/mlflow:/mlartifacts
+      - ../../scripts:/opt/project-scripts:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5001/ >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mlflow-postgres-data:

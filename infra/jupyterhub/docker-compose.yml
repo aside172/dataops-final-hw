@@ -1,0 +1,20 @@
+services:
+  jupyterhub:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      JUPYTERHUB_ADMIN_USER: ${JUPYTERHUB_ADMIN_USER}
+      JUPYTERHUB_ADMIN_PASSWORD: ${JUPYTERHUB_ADMIN_PASSWORD}
+    ports:
+      - "8002:8000"
+    volumes:
+      - ../../data/jupyterhub:/srv/jupyterhub_data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/hub/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10

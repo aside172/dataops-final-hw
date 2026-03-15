@@ -1,0 +1,10 @@
+apiVersion: 1
+
+providers:
+  - name: ML Service Dashboards
+    folder: DataOps Homework
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards

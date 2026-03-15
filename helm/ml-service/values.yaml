@@ -1,0 +1,50 @@
+replicaCount: 2
+
+image:
+  repository: ghcr.io/example/ml-risk-service
+  tag: "2026.03.15"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8000
+
+ingress:
+  enabled: true
+  className: nginx
+  host: ml-risk.local
+  path: /
+  pathType: Prefix
+
+env:
+  APP_HOST: "0.0.0.0"
+  APP_PORT: "8000"
+  APP_ENV: "prod"
+  MODEL_VERSION: "2026.03.15"
+  DEFAULT_THRESHOLD: "0.65"
+  DATABASE_URL: "postgresql://ml_service:ml_service@postgres:5432/ml_service"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+probes:
+  readiness:
+    path: /readyz
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    failureThreshold: 5
+  liveness:
+    path: /healthz
+    initialDelaySeconds: 10
+    periodSeconds: 15
+    failureThreshold: 3
+  startup:
+    path: /healthz
+    periodSeconds: 5
+    failureThreshold: 30
